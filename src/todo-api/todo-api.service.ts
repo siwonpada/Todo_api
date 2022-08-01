@@ -15,9 +15,13 @@ export class TodoApiService {
     return this.todoRepository.find();
   }
 
-  async createTodo(todoData: createTodoDto) {
+  getTodolistByUserId(UserId: number): Promise<Todo[]> {
+    return this.todoRepository.findBy({ id: UserId });
+  }
+
+  async createTodo(todoData: createTodoDto, userId: number) {
     const dataToCreate = new Todo();
-    dataToCreate.id = todoData.id;
+    dataToCreate.id = userId;
     dataToCreate.content = todoData.content;
     await this.todoRepository.save(dataToCreate);
   }

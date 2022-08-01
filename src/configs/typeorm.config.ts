@@ -1,5 +1,6 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { Todo } from 'src/entity/todo.entity';
+import { User } from 'src/entity/user.entity';
 
 export const typeORMConfig: TypeOrmModuleOptions = {
   type: 'mariadb',
@@ -8,5 +9,5 @@ export const typeORMConfig: TypeOrmModuleOptions = {
   username: 'TodoApi',
   password: 'TodoAdmin',
   database: 'TodoDatabase',
-  entities: [Todo],
+  entities: [Todo, User],
 };
