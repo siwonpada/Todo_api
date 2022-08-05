@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Todo } from 'src/entity/todo.entity';
 import { User } from 'src/entity/user.entity';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { createUserDto } from './dto/createUser.dto';
 import { updateUserDto } from './dto/updateUser.dto';
 
@@ -9,6 +10,8 @@ import { updateUserDto } from './dto/updateUser.dto';
 export class UsersService {
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
+    @InjectRepository(Todo) private todoRepository: Repository<Todo>,
+    private dataSource: DataSource,
   ) {}
 
   async findOne(username: string): Promise<User | undefined> {
@@ -20,20 +23,34 @@ export class UsersService {
   }
 
   async createUser(UserData: createUserDto) {
-    const UserToCreate = new User();
-    UserToCreate.username = UserData.username;
-    UserToCreate.password = UserData.password;
-    this.userRepository.save(UserToCreate);
+    await this.dataSource.transaction(async () => {
+      const UserToCreate = new User();
+      UserToCreate.username = UserData.username;
+      UserToCreate.password = UserData.password;
+      await this.userRepository.save(UserToCreate);
+    });
   }
 
   async updateUser(userId: number, userData: updateUserDto) {
-    const UserToUpdate = await this.userRepository.findOneBy({ id: userId });
-    UserToUpdate.password = userData.password;
-    this.userRepository.save(UserToUpdate);
+    await this.dataSource.transaction(async () => {
+      const UserToUpdate = await this.userRepository.findOneBy({ id: userId });
+      UserToUpdate.password = userData.password;
+      await this.userRepository.save(UserToUpdate);
+    });
   }
 
   async deleteUser(userId: number) {
-    const UserToDelete = await this.userRepository.findOneBy({ id: userId });
-    this.userRepository.remove(UserToDelete);
+    await this.dataSource.transaction(async () => {
+      const UserToDelete = await this.userRepository.findOne({
+        relations: {
+          todos: true,
+        },
+        where: {
+          id: userId,
+        },
+      });
+      await this.todoRepository.remove(UserToDelete.todos);
+      await this.userRepository.remove(UserToDelete);
+    });
   }
 }
