@@ -4,11 +4,12 @@ import { AuthModule } from 'src/auth/auth.module';
 import { Todo } from 'src/entity/todo.entity';
 import { User } from 'src/entity/user.entity';
 import { TodoApiController } from './todo-api.controller';
+import { TodoApiRepository } from './todo-api.repository';
 import { TodoApiService } from './todo-api.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Todo, User]), AuthModule],
   controllers: [TodoApiController],
-  providers: [TodoApiService],
+  providers: [TodoApiService, TodoApiRepository],
 })
 export class TodoApiModule {}

@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import configuations from 'src/config/configuations';
 import { UsersService } from 'src/users/users.service';
+import { accessCookiesDto } from './dto/accessCookies.dto';
+import { refreshCookiesDto } from './dto/refreshCookies.dto';
+import { validateUserDto } from './dto/validateUser.dto';
 
 @Injectable()
 export class AuthService {
@@ -9,7 +13,10 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async validateUser(username: string, pass: string): Promise<any> {
+  async validateUser(
+    username: string,
+    pass: string,
+  ): Promise<validateUserDto | null> {
     const user = await this.userService.findOne(username);
     if (user && user.password === pass) {
       const { password, ...result } = user;
@@ -18,11 +25,39 @@ export class AuthService {
     return null;
   }
 
-  async login(data: any) {
-    const user = await this.userService.findOne(data.username);
-    const payload = { username: user.username, sub: user.id };
+  async getCookieWithJwtAccessToken(
+    data: validateUserDto,
+  ): Promise<accessCookiesDto> {
+    const payload = { username: data.username, sub: data.id };
+    const token = this.jwtService.sign(payload, {
+      secret: configuations().JWT.secret,
+      expiresIn: configuations().JWT.expiresIn,
+    });
+
     return {
-      access_token: this.jwtService.sign(payload),
+      accessToken: token,
+      domain: 'localhost',
+      path: '/',
+      httpOnly: true,
+      maxAge: 1000,
+    };
+  }
+
+  async getCookieWithJwtRefreshToken(
+    data: validateUserDto,
+  ): Promise<refreshCookiesDto> {
+    const payload = { username: data.username, sub: data.id };
+    const token = this.jwtService.sign(payload, {
+      secret: configuations().JWT.refresh_secret,
+      expiresIn: configuations().JWT.refresh_exprires,
+    });
+
+    return {
+      refreshToken: token,
+      domain: 'localhost',
+      path: '/',
+      httpOnly: true,
+      maxAge: 10000,
     };
   }
 }

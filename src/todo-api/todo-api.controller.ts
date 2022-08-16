@@ -38,13 +38,17 @@ export class TodoApiController {
 
   @UseGuards(JwtAuthGuard)
   @Delete('/:uuid')
-  removeTodo(@Param('uuid') uuid: string) {
-    return this.TodoApiService.removeTodo(uuid);
+  removeTodo(@Param('uuid') uuid: string, @Request() req) {
+    return this.TodoApiService.removeTodo(uuid, req.user.userId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Put('/:uuid')
-  changeTodo(@Param('uuid') uuid: string, @Body() todoData: updateTodoDto) {
-    return this.TodoApiService.changeTodo(uuid, todoData);
+  changeTodo(
+    @Param('uuid') uuid: string,
+    @Body() todoData: updateTodoDto,
+    @Request() req,
+  ) {
+    return this.TodoApiService.changeTodo(uuid, todoData, req.user.userId);
   }
 }

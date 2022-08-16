@@ -1,56 +1,66 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Todo } from 'src/entity/todo.entity';
 import { User } from 'src/entity/user.entity';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { createUserDto } from './dto/createUser.dto';
 import { updateUserDto } from './dto/updateUser.dto';
+import { UserRepository } from './users.repository';
 
 @Injectable()
 export class UsersService {
   constructor(
-    @InjectRepository(User) private userRepository: Repository<User>,
-    @InjectRepository(Todo) private todoRepository: Repository<Todo>,
+    private userRepository: UserRepository,
     private dataSource: DataSource,
   ) {}
 
   async findOne(username: string): Promise<User | undefined> {
-    return this.userRepository.findOneBy({ username: username });
+    return this.userRepository.findOne(username);
   }
 
-  async getUser() {
-    return this.userRepository.find();
+  async setCurrentRefreshToken(
+    refreshToken: string,
+    userId: number,
+  ): Promise<void> {
+    await this.userRepository.updateRefreshToken(refreshToken, userId);
   }
 
-  async createUser(UserData: createUserDto) {
-    await this.dataSource.transaction(async () => {
-      const UserToCreate = new User();
-      UserToCreate.username = UserData.username;
-      UserToCreate.password = UserData.password;
-      await this.userRepository.save(UserToCreate);
+  async getUserIfRefreshTokenMatches(
+    refreshToken: string,
+    userId: number,
+  ): Promise<User | null> {
+    const user = await this.userRepository.findOneById(userId);
+
+    const isRefreshTokenMatching =
+      refreshToken === user.currentHashedRefreshToken;
+
+    if (isRefreshTokenMatching) {
+      return user;
+    }
+    return null;
+  }
+
+  async removeRefreshToken(userId: number): Promise<void> {
+    await this.userRepository.updateRefreshToken(null, userId);
+  }
+
+  async getUser(): Promise<User[]> {
+    return this.userRepository.getUsers();
+  }
+
+  async createUser(UserData: createUserDto): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      this.userRepository.createUser(manager, UserData);
     });
   }
 
-  async updateUser(userId: number, userData: updateUserDto) {
-    await this.dataSource.transaction(async () => {
-      const UserToUpdate = await this.userRepository.findOneBy({ id: userId });
-      UserToUpdate.password = userData.password;
-      await this.userRepository.save(UserToUpdate);
+  async updateUser(userId: number, userData: updateUserDto): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      this.userRepository.updateUser(manager, userData, userId);
     });
   }
 
-  async deleteUser(userId: number) {
-    await this.dataSource.transaction(async () => {
-      const UserToDelete = await this.userRepository.findOne({
-        relations: {
-          todos: true,
-        },
-        where: {
-          id: userId,
-        },
-      });
-      await this.todoRepository.remove(UserToDelete.todos);
-      await this.userRepository.remove(UserToDelete);
+  async deleteUser(userId: number): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      this.userRepository.deleteUser(manager, userId);
     });
   }
 }
